@@ -36,7 +36,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - uses: docker/setup-buildx-action@v3
       - name: Build & push API (arm64)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend
           platforms: linux/arm64
@@ -46,7 +46,7 @@ jobs:
           build-args: APP_VERSION=${{ steps.meta.outputs.tag }}
           tags: ${{ steps.ecr.outputs.registry }}/pesa/api:${{ steps.meta.outputs.tag }}
       - name: Build & push admin (arm64)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: admin
           platforms: linux/arm64
