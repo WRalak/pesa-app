@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # ---- deps: production dependencies only (argon2 ships prebuilt binaries) ----
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts=false && npm cache clean --force
 
 # ---- runtime: minimal, non-root, read-only friendly ----
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production \
     NODE_OPTIONS="--enable-source-maps --max-old-space-size=768"
 # No extra OS packages: smaller attack surface. Signal handling is done in
