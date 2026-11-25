@@ -12,6 +12,7 @@ export function errorHandler(err, req, res, _next) {
   let e = err;
   if (err?.type === 'entity.parse.failed') e = new AppError('BAD_REQUEST', 'Malformed JSON body', 400);
   else if (err?.type === 'entity.too.large') e = new AppError('PAYLOAD_TOO_LARGE', 'Request body too large', 413);
+  else if (err instanceof RangeError) e = new AppError('INVALID_AMOUNT', err.message, 422);
   else if (err?.name === 'CastError') e = new AppError('BAD_REQUEST', 'Invalid identifier', 400);
   else if (err?.code === 11000) e = new AppError('DUPLICATE', 'Resource already exists', 409);
   else if (err?.name === 'ValidationError' && err.errors) {

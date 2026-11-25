@@ -36,6 +36,7 @@
     "jsonwebtoken": "^9.0.3",
     "libphonenumber-js": "^1.13.17",
     "mongoose": "^9.13.1",
+    "pdfkit": "^0.21.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
     "prom-client": "^15.1.3",

@@ -83,6 +83,9 @@ const schema = z.object({
   METRICS_TOKEN: z.string().optional(),
 
   JOBS_INLINE: bool.default(false),
+  PAYMENT_RATE_LIMIT_PER_MIN: z.coerce.number().int().default(20),
+  RISK_VELOCITY_WARN: z.coerce.number().int().default(5),
+  RISK_VELOCITY_BLOCK: z.coerce.number().int().default(10),
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   SEED_ADMIN_PASSWORD: z.string().optional(),
 });
