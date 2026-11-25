@@ -70,6 +70,7 @@ const transactionSchema = new Schema({
   categorySource: { type: String, enum: ['RULE', 'USER', 'AI', 'DEFAULT'], default: 'DEFAULT' },
   counterparty: { type: counterpartySchema, default: () => ({}) },
   sourceAccountId: { type: Schema.Types.ObjectId, ref: 'LinkedAccount' },
+  cardId: { type: Schema.Types.ObjectId, ref: 'Card' },
   idempotencyKey: { type: String, required: true, immutable: true },
   providerRequestId: String, // e.g. Daraja CheckoutRequestID
   externalRef: String, // provider receipt, e.g. M-Pesa receipt number
@@ -103,6 +104,7 @@ transactionSchema.index({ userId: 1, category: 1, createdAt: -1 });
 transactionSchema.index({ provider: 1, providerRequestId: 1 }, { unique: true, partialFilterExpression: { providerRequestId: { $type: 'string' } } });
 transactionSchema.index({ provider: 1, externalRef: 1 }, { unique: true, partialFilterExpression: { externalRef: { $type: 'string' } } });
 transactionSchema.index({ status: 1, updatedAt: 1 }); // pending sweeper
+transactionSchema.index({ cardId: 1, createdAt: -1 }, { partialFilterExpression: { cardId: { $exists: true } } });
 transactionSchema.index({ createdAt: -1, status: 1 }); // admin dashboards
 transactionSchema.index({ 'risk.reviewRequired': 1, createdAt: -1 }, { partialFilterExpression: { 'risk.reviewRequired': true } });
 

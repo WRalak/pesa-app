@@ -13,6 +13,8 @@ import budgetRoutes from './modules/budgets/routes.js';
 import analyticsRoutes from './modules/analytics/routes.js';
 import insightsRoutes from './modules/insights/routes.js';
 import dashboardRoutes from './modules/dashboard/routes.js';
+import cardRoutes, { issuerWebhook } from './modules/cards/routes.js';
+import rewardRoutes from './modules/rewards/routes.js';
 
 /** Central route table. All public APIs are versioned under /v1. */
 export function mountRoutes(app) {
@@ -23,6 +25,7 @@ export function mountRoutes(app) {
   app.use('/v1/support', supportRoutes);
   app.use('/v1/payments', paymentRoutes);
   app.use('/v1/callbacks', callbackRoutes);
+  app.use('/v1/callbacks', issuerWebhook);
   app.use('/v1/transactions', transactionRoutes);
   app.use('/v1/notifications', notificationRoutes);
   app.use('/v1/accounts', accountRoutes);
@@ -31,4 +34,6 @@ export function mountRoutes(app) {
   app.use('/v1/analytics', analyticsRoutes);
   app.use('/v1/insights', insightsRoutes);
   app.use('/v1/dashboard', dashboardRoutes);
+  app.use('/v1/cards', cardRoutes);
+  app.use('/v1/rewards', rewardRoutes);
 }

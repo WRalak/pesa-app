@@ -183,8 +183,10 @@ export async function verifyPhone({ phone, code, device }, req) {
   user.phoneVerifiedAt = new Date();
   if (wasPending) user.status = 'ACTIVE';
   await user.save();
+  const session = await completeLogin(user, device, req, { newDevice: false });
+  // Emitted after the device is registered so referral abuse checks can see it.
   if (wasPending) await emitDomainEvent('user.activated', { userId: String(user._id), referredBy: user.referredBy ? String(user.referredBy) : null });
-  return completeLogin(user, device, req, { newDevice: false });
+  return session;
 }
 
 export async function resendOtp({ phone, purpose }) {
