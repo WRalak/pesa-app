@@ -2,10 +2,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'app.dart';
+import 'core/config/env.dart';
 import 'core/network/api_exception.dart';
+import 'core/network/pinning.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Env.assertValid();
+  await PinnedHttpOverrides.install();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(ProviderScope(
     // Don't auto-retry client errors (4xx); network/5xx get a short backoff.

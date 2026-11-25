@@ -100,6 +100,10 @@ Reconciliation resolves non-terminal transactions to the provider's settlement o
 
 ### Provider abstraction
 
+**Routing rule.** Safaricom's STK Push can only collect into the shortcode that owns the passkey, i.e. the licensed partner's own account. The Daraja adapter therefore supports **`DEPOSIT` ("Add money") only**. Paying a *third-party* paybill, till or biller, or sending money to a person, needs an aggregator, B2B or B2C adapter under a partner agreement. Routing those through STK would deliver the customer's money to the wrong recipient. The app shows only the payment types that some live provider supports (`GET /v1/payments/options`), so in production the Pay screen grows as partner adapters are added.
+
+A verified callback can arrive before the payment's `providerRequestId` is written (a race with initiation). It is stored as `ORPHANED` and re-applied by a backoff job (15 s → 4 min). The status sweeper and reconciliation remain as further safety nets.
+
 `PaymentProviderAdapter` (`payments/providers/base.js`) defines the interface every provider implements: `initiate`, `parseCallback`, `queryStatus`, `reverse` and `settlementReport`, plus declared capabilities (types, currencies, countries, signed callbacks, confirm-by-query). Adding a provider means writing one adapter and adding one registry entry. Fees, priority, enablement and maintenance mode live in the `PaymentProvider` collection and are edited from the admin console.
 
 ## Country configuration

@@ -43,7 +43,7 @@ Everything outside production uses **sandbox providers**. The mock provider send
 ## Tests
 
 ```bash
-cd backend && npm test        # 118 tests: auth, payments, callbacks, idempotency, RBAC, security, finance
+cd backend && npm test        # 136 tests: auth, payments, callbacks, idempotency, RBAC, security, finance, prod config gate
 cd admin   && npm test        # component tests (+ npm run typecheck)
 cd mobile  && flutter test    # unit + widget tests (+ flutter analyze)
 ```

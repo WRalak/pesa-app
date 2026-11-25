@@ -54,3 +54,16 @@ variable "mongodb_uri_secret_arn" {
   type        = string
 }
 variable "alarm_sns_topic_arn" { type = string }
+variable "email_from" {
+  description = "Verified SES sender, e.g. no-reply@pesa.africa"
+  type        = string
+}
+variable "ses_region" {
+  description = "SES region (SES is not available in every region; eu-west-1 is closest with full SES support)."
+  type        = string
+  default     = "eu-west-1"
+}
+variable "daraja_callback_ips" {
+  description = "Safaricom's published callback source IPs (from your Safaricom integration contact)."
+  type        = list(string)
+}

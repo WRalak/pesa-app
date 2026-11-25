@@ -43,6 +43,12 @@ class PaymentOptions {
   List<({String code, String name})> get utilities => [for (final u in json['utilities'] as List) (code: '${(u as Json)['code']}', name: '${u['name']}')];
   List<String> get networks => (json['networks'] as List).cast<String>();
   bool get sandbox => (json['providers'] as List).any((p) => (p as Json)['sandbox'] == true);
+
+  /// Payment types some enabled, non-maintenance provider can actually process.
+  Set<String> get availableTypes => {
+        for (final p in (json['providers'] as List).cast<Json>())
+          if (p['maintenance'] != true) ...(p['types'] as List).cast<String>(),
+      };
 }
 
 class PaymentsRepository {

@@ -34,8 +34,21 @@ export async function sendSms(to, message, { kind = 'GENERAL' } = {}) {
   logger.info({ to: maskPhone(to), kind, provider: config.SMS_PROVIDER }, 'SMS dispatched');
 }
 
+let ses;
+async function sendViaSes(to, subject, text) {
+  const { SESv2Client, SendEmailCommand } = await import('@aws-sdk/client-sesv2');
+  ses ??= new SESv2Client({ region: config.SES_REGION ?? config.S3_REGION });
+  await ses.send(new SendEmailCommand({
+    FromEmailAddress: config.EMAIL_FROM,
+    Destination: { ToAddresses: [to] },
+    Content: { Simple: { Subject: { Data: subject, Charset: 'UTF-8' }, Body: { Text: { Data: text, Charset: 'UTF-8' } } } },
+  }));
+}
+
 export async function sendEmail(to, subject, text, { kind = 'GENERAL' } = {}) {
-  if (config.DEV_OTP_OUTBOX || config.isTest) {
+  if (config.EMAIL_PROVIDER === 'ses') {
+    await sendViaSes(to, subject, text);
+  } else if (config.DEV_OTP_OUTBOX || config.isTest) {
     outbox.unshift({ channel: 'EMAIL', to, subject, message: text, kind, at: new Date() });
     outbox.length = Math.min(outbox.length, 100);
   }

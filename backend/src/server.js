@@ -21,6 +21,8 @@ const app = createApp();
 const server = http.createServer(app);
 server.keepAliveTimeout = 65_000; // > ALB idle timeout
 server.headersTimeout = 66_000;
+server.requestTimeout = 60_000; // slow-request (slowloris) protection; statements stream within this
+server.maxRequestsPerSocket = 1000;
 
 const io = new Server(server, {
   path: '/realtime',

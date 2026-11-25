@@ -41,8 +41,15 @@ export function toWholeKes(amountMinor) {
 export class DarajaProvider extends PaymentProviderAdapter {
   code = 'daraja';
 
+  /**
+   * STK Push can only collect into the shortcode that owns the passkey (the
+   * licensed partner's account). It therefore supports DEPOSIT ("Add money")
+   * only. Paying a *third-party* paybill/till/biller needs an aggregator or
+   * B2B adapter — routing those through STK would send the customer's money
+   * to the wrong recipient.
+   */
   capabilities = {
-    types: ['DEPOSIT', 'PAYBILL', 'BUY_GOODS'],
+    types: ['DEPOSIT'],
     currencies: ['KES'],
     countries: ['KE'],
     statusQuery: true,
@@ -101,14 +108,14 @@ export class DarajaProvider extends PaymentProviderAdapter {
   }
 
   async initiate(txn, { payerPhone }) {
+    if (!this.capabilities.types.includes(txn.type)) throw new Error(`Daraja STK cannot process ${txn.type}`);
     this.assertConfigured();
     const timestamp = darajaTimestamp();
-    const isTill = txn.type === 'BUY_GOODS';
     const body = {
       BusinessShortCode: config.DARAJA_SHORTCODE,
       Password: stkPassword(config.DARAJA_SHORTCODE, config.DARAJA_PASSKEY, timestamp),
       Timestamp: timestamp,
-      TransactionType: isTill ? 'CustomerBuyGoodsOnline' : 'CustomerPayBillOnline',
+      TransactionType: 'CustomerPayBillOnline',
       Amount: toWholeKes(txn.amountMinor),
       PartyA: payerPhone.replace('+', ''),
       PartyB: config.DARAJA_SHORTCODE,

@@ -9,7 +9,7 @@ const { createRedisConnection, closeRedis } = await import('./lib/redis.js');
 const { QUEUES, getQueue, closeQueues } = await import('./lib/queue.js');
 await import('./modules/subscribers.js');
 const { deliverPush } = await import('./modules/notifications/service.js');
-const { checkTransactionStatus, sweepPending, deliverMockCallback } = await import('./modules/payments/service.js');
+const { checkTransactionStatus, sweepPending, deliverMockCallback, retryOrphanedCallback } = await import('./modules/payments/service.js');
 const { reconcileRecent } = await import('./modules/payments/reconciliation.js');
 const { sendDueReminders } = await import('./modules/savings/service.js');
 const { runRecurring } = await import('./modules/budgets/service.js');
@@ -29,6 +29,7 @@ const handlers = {
     'confirm-status': (job) => checkTransactionStatus(job.data.transactionId),
     'sweep-pending': () => sweepPending(),
     'mock-callback': (job) => deliverMockCallback(job.data),
+    'retry-orphaned-callback': (job) => retryOrphanedCallback(job.data),
   },
   [QUEUES.reconciliation]: { 'daily-reconciliation': () => reconcileRecent() },
   [QUEUES.reminders]: {

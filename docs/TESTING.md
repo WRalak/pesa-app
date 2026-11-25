@@ -2,7 +2,7 @@
 
 **Nothing in the automated tests moves real money.** Payment tests use the sandbox `mock` provider, which has HMAC-signed webhooks and deterministic outcomes. Daraja is tested at the adapter level with a mocked `fetch`.
 
-## Backend (`cd backend && npm test`): 118 tests
+## Backend (`cd backend && npm test`): 136 tests
 
 | Suite | Covers |
 |---|---|

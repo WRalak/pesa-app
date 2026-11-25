@@ -7197,7 +7197,7 @@
             "schema": {
               "type": "string",
               "nullable": true,
-              "default": "2026-10-26T14:17:05.232Z"
+              "default": "2026-10-26T14:45:16.107Z"
             },
             "required": false,
             "name": "from",
@@ -7207,7 +7207,7 @@
             "schema": {
               "type": "string",
               "nullable": true,
-              "default": "2026-11-25T14:17:05.232Z"
+              "default": "2026-11-25T14:45:16.107Z"
             },
             "required": false,
             "name": "to",

@@ -33,6 +33,11 @@ class PayHubScreen extends ConsumerWidget {
       ('deposit', Icons.add_rounded, 'Add money', 'From your M-Pesa via prompt', PesaColors.violet500),
       ('receive', Icons.qr_code_2_rounded, 'Receive', 'Share your QR or number', const Color(0xFF14B8A6)),
     ];
+    const typeFor = {'send': 'SEND_MONEY', 'paybill': 'PAYBILL', 'till': 'BUY_GOODS', 'airtime': 'AIRTIME', 'deposit': 'DEPOSIT'};
+    final available = opts.value?.availableTypes;
+    // Only offer what a live provider can process (production availability
+    // depends on partner agreements); Receive needs no provider.
+    final shown = available == null ? items : items.where((i) => i.$1 == 'receive' || available.contains(typeFor[i.$1])).toList();
     return Scaffold(
       appBar: AppBar(title: Text(AppLocalizations.of(context).navPay)),
       body: ListView(padding: Space.page.copyWith(bottom: 32), children: [
@@ -40,7 +45,7 @@ class PayHubScreen extends ConsumerWidget {
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: Space.md, crossAxisSpacing: Space.md, childAspectRatio: 1.25,
           children: [
-            for (final (key, icon, title, sub, color) in items)
+            for (final (key, icon, title, sub, color) in shown)
               PesaCard(
                 onTap: () => context.push('/pay/$key'),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -50,8 +55,8 @@ class PayHubScreen extends ConsumerWidget {
               ),
           ],
         ),
-        const SectionHeader('Utilities & bills'),
-        AsyncView(
+        if (available == null || available.contains('UTILITY')) const SectionHeader('Utilities & bills'),
+        if (available == null || available.contains('UTILITY')) AsyncView(
           value: opts,
           onRetry: () => ref.invalidate(paymentOptionsProvider),
           data: (o) => PesaCard(
@@ -152,6 +157,16 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_titles.containsKey(widget.kind)) {
+      return Scaffold(appBar: AppBar(), body: const EmptyState(icon: Icons.link_off_rounded, title: 'Page not found'));
+    }
+    final available = ref.watch(paymentOptionsProvider).value?.availableTypes;
+    if (available != null && !available.contains(_draft.type)) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_titles[widget.kind] ?? 'Pay')),
+        body: EmptyState(icon: Icons.schedule_rounded, title: 'Not available yet', message: 'This payment type isn\'t available in your area right now. We\'ll let you know when it is.', action: OutlinedButton(onPressed: () => context.pop(), child: const Text('Back'))),
+      );
+    }
     final digits = Money.minorUnits[_currency] ?? 2;
     final shortcode = [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(7)];
     return Scaffold(

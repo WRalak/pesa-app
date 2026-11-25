@@ -64,7 +64,7 @@ jobs:
       - run: flutter test --coverage
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - name: Build Android (staging config, unsigned)
+      - name: Build Android release APK (staging config; debug-signed smoke build, never distributed)
         run: flutter build apk --release --dart-define=ENV=staging --dart-define=API_BASE_URL=https://api.staging.pesa.africa
 
   terraform:

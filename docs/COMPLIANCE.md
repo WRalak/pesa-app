@@ -7,7 +7,7 @@
 Pesa is designed as a **technology and financial-management platform** that:
 
 - does **not** hold, pool or move customer funds on its own balance sheet (no wallet, no stored value);
-- routes payment instructions to **licensed** payment service providers (for example Safaricom M-Pesa through Daraja under a merchant or aggregator agreement, licensed PSP aggregators, and licensed card issuers);
+- routes payment instructions to **licensed** payment service providers, and only for flows the provider actually performs (Daraja STK Push is used solely to collect into the partner's own account) (for example Safaricom M-Pesa through Daraja under a merchant or aggregator agreement, licensed PSP aggregators, and licensed card issuers);
 - treats savings goals as **tracking tools**, with custody (when offered) provided by an authorised partner such as a bank or a SACCO licensed by SASRA.
 
 Points to confirm with counsel and the CBK:

@@ -67,6 +67,8 @@ const schema = z.object({
   AFRICASTALKING_USERNAME: z.string().optional(),
   AFRICASTALKING_API_KEY: z.string().optional(),
   EMAIL_PROVIDER: z.enum(['console', 'ses']).default('console'),
+  EMAIL_FROM: z.string().optional(),
+  SES_REGION: z.string().optional(),
   FCM_ENABLED: bool.default(false),
   FCM_SERVICE_ACCOUNT_JSON: z.string().optional(),
 
@@ -100,15 +102,43 @@ if (!parsed.success) {
 const env = parsed.data;
 
 const isDeployed = env.NODE_ENV === 'production' || env.NODE_ENV === 'staging';
-if (isDeployed) {
+/**
+ * Production-readiness gate. Staging and production refuse to boot with any
+ * development shortcut, so a misconfigured deploy fails fast (and the ECS
+ * circuit breaker rolls back) instead of running insecurely.
+ */
+export function deploymentProblems(e) {
   const problems = [];
+  if (!['staging', 'production'].includes(e.NODE_ENV)) return problems;
   for (const k of ['JWT_ACCESS_SECRET', 'JWT_ADMIN_SECRET', 'HASH_PEPPER', 'FIELD_ENCRYPTION_KEY', 'MOCK_PROVIDER_WEBHOOK_SECRET']) {
-    if (String(env[k]).startsWith('dev-') || env[k] === schema.shape[k]?._def?.defaultValue?.()) problems.push(`${k} uses a development default`);
+    if (String(e[k]).startsWith('dev-') || e[k] === schema.shape[k]?._def?.defaultValue?.()) problems.push(`${k} uses a development default`);
   }
-  if (env.DEV_OTP_OUTBOX) problems.push('DEV_OTP_OUTBOX must be disabled');
-  if (env.NODE_ENV === 'production' && env.PAYMENT_PROVIDERS.split(',').includes('mock')) {
-    problems.push('mock payment provider cannot be enabled in production');
+  if (e.JWT_ACCESS_SECRET === e.JWT_ADMIN_SECRET) problems.push('JWT_ACCESS_SECRET and JWT_ADMIN_SECRET must differ');
+  if (e.DEV_OTP_OUTBOX) problems.push('DEV_OTP_OUTBOX must be disabled');
+  if (e.SMS_PROVIDER === 'console') problems.push('SMS_PROVIDER must be a real gateway (OTPs would never be delivered)');
+  if (e.SMS_PROVIDER === 'africastalking' && (!e.AFRICASTALKING_USERNAME || !e.AFRICASTALKING_API_KEY)) problems.push('Africa\'s Talking credentials missing');
+  if (e.EMAIL_PROVIDER === 'console') problems.push('EMAIL_PROVIDER must be a real provider');
+  if (e.EMAIL_PROVIDER === 'ses' && !e.EMAIL_FROM) problems.push('EMAIL_FROM is required for SES');
+  if (!e.PUBLIC_BASE_URL.startsWith('https://')) problems.push('PUBLIC_BASE_URL must be https');
+  if (e.CORS_ORIGINS.split(',').some((o) => o.trim() && !o.trim().startsWith('https://'))) problems.push('CORS_ORIGINS must all be https');
+  if (!e.METRICS_TOKEN || e.METRICS_TOKEN.length < 32) problems.push('METRICS_TOKEN (>= 32 chars) is required');
+  const providers = e.PAYMENT_PROVIDERS.split(',').map((p) => p.trim());
+  if (e.NODE_ENV === 'production') {
+    if (providers.includes('mock')) problems.push('mock payment provider cannot be enabled in production');
+    if (e.DARAJA_ENV !== 'production' && providers.includes('daraja')) problems.push('DARAJA_ENV must be production');
   }
+  if (providers.includes('daraja')) {
+    for (const k of ['DARAJA_CONSUMER_KEY', 'DARAJA_CONSUMER_SECRET', 'DARAJA_SHORTCODE', 'DARAJA_PASSKEY']) if (!e[k]) problems.push(`${k} is required when daraja is enabled`);
+    if (!e.DARAJA_CALLBACK_TOKEN || e.DARAJA_CALLBACK_TOKEN.length < 32) problems.push('DARAJA_CALLBACK_TOKEN (>= 32 random chars) is required');
+    if (!e.DARAJA_ALLOWED_IPS) problems.push('DARAJA_ALLOWED_IPS is required (Safaricom callback source IPs)');
+  }
+  if (e.FCM_ENABLED && !e.FCM_SERVICE_ACCOUNT_JSON) problems.push('FCM_SERVICE_ACCOUNT_JSON is required when FCM is enabled');
+  if (e.AI_EXTERNAL_PROVIDER !== 'none' && !e.AI_API_KEY) problems.push('AI_API_KEY is required for the external AI provider');
+  return problems;
+}
+
+if (isDeployed) {
+  const problems = deploymentProblems(env);
   if (problems.length) {
      
     console.error('Refusing to start:', problems);

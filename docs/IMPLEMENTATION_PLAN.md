@@ -19,6 +19,21 @@
 - The Flutter app was compiled (a web build used only for automated UI checks) and driven through: login → device OTP → dashboard → airtime payment approved with the PIN pad → live "Payment successful". These checks caught and fixed an inaccessible OTP field and a duplicated navigation push.
 - The API container image was built and run read-only as non-root with all capabilities dropped.
 
+## Production hardening pass
+
+| Gap found | Fix |
+|---|---|
+| Daraja STK Push was offered for third-party Paybill/Till payments, but STK can only pay the partner's own shortcode, so money would reach the wrong recipient | The Daraja adapter is restricted to `DEPOSIT` and asserts it; the app shows only provider-supported payment types and explains when one is unavailable |
+| A callback racing initiation was only rescued by the 1-minute sweeper (and never for providers without status queries) | Orphaned callbacks are re-applied by a backoff job |
+| `EMAIL_PROVIDER=ses` was accepted but not implemented (email OTPs and recovery silently not sent) | SES v2 sender, IAM permission, Terraform wiring |
+| Staging and production could boot with console SMS or email, http URLs, missing Daraja IP allow-list and more | Tested production gate (`deploymentProblems`) |
+| No slow-request protection | `requestTimeout` and `maxRequestsPerSocket` set on the HTTP server |
+| Mobile release builds were signed with the debug key | `key.properties` signing, R8 shrinking, Gradle guard, tag-driven release workflow |
+| No TLS pinning | CA pinning to Amazon Trust Services roots for all connections, with tests |
+| A release build could fall back to the emulator URL | Non-dev builds require an `https://` API URL at startup |
+| FCM on Android needed the Google Services plugin | Applied automatically when `google-services.json` is injected |
+| Default Flutter launcher icon | Branded adaptive and iOS icons, navy launch screen |
+
 ## Before production
 
 These depend on partners, legal work or people, not code:
@@ -26,6 +41,7 @@ These depend on partners, legal work or people, not code:
 1. **Licensing and contracts.** Confirm the CBK pathway (see [COMPLIANCE.md](COMPLIANCE.md)); sign agreements with Safaricom (Daraja production shortcode), an aggregator for B2C and bank payouts, a card issuer, and an account-aggregation partner.
 2. **Adapters needing partner SDKs or credentials:** a production account aggregator (the interface is in `accounts/aggregators.js`), the card issuer (`cards/issuers.js`, including its secure-display SDK in the app), Daraja B2C for send-money (the STK, query and reversal adapter is implemented), and the Africa's Talking SMS sender (implemented; needs credentials).
 3. **KYC:** IPRS verification, sanctions and PEP screening, document capture UI with liveness, and a goAML STR export.
-4. **Mobile:** add Firebase configs per environment; certificate pinning; Play Integrity / App Attest; run `tool/fetch_fonts.sh`; migrate FCM to the `register()`/`onRegistered` API together with the server sender.
+4. **Mobile:** add Firebase configs and signing secrets to the `prod` GitHub Environment; confirm the Google Services plugin (4.4.2) against AGP 9 on the first release build; Play Integrity / App Attest; run `tool/fetch_fonts.sh`; migrate FCM to the `register()`/`onRegistered` API together with the server sender.
+4a. **Payments coverage:** with Daraja alone, production supports **Add money** only. Send money, Paybill, Till, airtime and utilities each need a partner adapter (aggregator, B2C or B2B) implementing `PaymentProviderAdapter`; the app enables each type automatically once a provider serving it is live.
 5. **Security:** external penetration test; DPIA; ODPC registration; an Atlas custom role that removes update and delete rights on append-only collections.
 6. **Load test** on staging at the target scale and tune pool sizes and autoscaling.

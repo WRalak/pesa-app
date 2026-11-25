@@ -23,7 +23,7 @@
 | API5 Broken function-level authorization | Admin routes require an MFA-backed admin JWT (separate secret and audience) plus explicit permissions; RBAC tests per role |
 | API6 Unrestricted access to sensitive business flows | Velocity blocking, duplicate-payment confirmation, OTP issuance caps (3 per 10 min, 10 per day), referral abuse detection (shared device, caps), campaign budgets |
 | API7 SSRF | The server never fetches user-supplied URLs; provider endpoints are fixed configuration |
-| API8 Security misconfiguration | Validated environment config that refuses to start in staging or production with dev secrets, mock providers or the OTP outbox; Swagger is off in production; the edge ALB blocks `/admin`, `/metrics` and `/docs` |
+| API8 Security misconfiguration | A production gate (`deploymentProblems()` in `config/env.js`, unit-tested) refuses to start staging or production with dev secrets, identical user/admin JWT secrets, console SMS or email, the mock provider (prod), Daraja without IP allow-list or a strong callback token, non-https URLs, or a missing metrics token; Swagger is off in production; the edge ALB blocks `/admin`, `/metrics` and `/docs` |
 | API9 Improper inventory management | Versioned `/v1`; a generated OpenAPI spec checked in CI; a single route table |
 | API10 Unsafe consumption of APIs | Provider responses are parsed defensively; unknown outcomes are never assumed; amounts are cross-checked against our ledger; timeouts on every outbound call |
 
@@ -54,7 +54,7 @@
 
 ## Mobile app
 
-Tokens are stored in the Android Keystore or iOS Keychain (`first_unlock_this_device`). Biometrics unlock the local session only and never replace the server-verified PIN for payments. The PIN pad is custom, so no system keyboard, clipboard or suggestions are involved. `FLAG_SECURE` blocks screenshots and recents previews. App backups are disabled. Release builds are HTTPS-only with system CAs (no user CAs). The app auto-locks in the background, and a sandbox banner appears in every non-production build. Recommended before launch: certificate pinning to the API's intermediate CA, Play Integrity / App Attest, and root/jailbreak signals fed into the risk engine.
+Tokens are stored in the Android Keystore or iOS Keychain (`first_unlock_this_device`). Biometrics unlock the local session only and never replace the server-verified PIN for payments. The PIN pad is custom, so no system keyboard, clipboard or suggestions are involved. `FLAG_SECURE` blocks screenshots and recents previews. App backups are disabled. Release builds are HTTPS-only with system CAs (no user CAs). The app auto-locks in the background, and a sandbox banner appears in every non-production build. **TLS pinning** is implemented: staging and production builds trust only the Amazon Trust Services roots that ACM chains to (`mobile/assets/certs/trusted_roots.pem`, installed via `HttpOverrides`, so Dio and the WebSocket both use it). Root-level pinning survives ACM's automatic renewals; if the API ever leaves ACM, update the bundle and ship an app release *first*. Non-dev builds refuse to start without an `https://` API URL. Recommended before launch: Play Integrity / App Attest, and root/jailbreak signals fed into the risk engine.
 
 ## Vulnerability management
 

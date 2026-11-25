@@ -15,6 +15,7 @@ import { emitDomainEvent } from '../../lib/events.js';
 import { enqueue, QUEUES, registerInlineHandler } from '../../lib/queue.js';
 import { paymentCounter, callbackCounter } from '../../lib/metrics.js';
 import { getCountry } from '../../config/countries/index.js';
+import { config } from '../../config/env.js';
 import { UserProfile } from '../users/models.js';
 import { verifyPin } from '../auth/service.js';
 import { securityEvent } from '../audit/service.js';
@@ -325,6 +326,7 @@ export async function processCallback(providerCode, req) {
     record = await PaymentCallback.create({
       provider: providerCode, dedupeKey: parsed.dedupeKey, signatureValid: true, sourceIp: req.ip,
       providerRequestId: parsed.providerRequestId, externalRef: parsed.externalRef, outcome: parsed.outcome, payload: parsed.sanitizedPayload,
+      parsed: { amountMinor: parsed.amountMinor, reason: parsed.reason, reversalRequestId: parsed.reversalRequestId },
     });
   } catch (err) {
     if (err?.code === 11000) {
@@ -338,6 +340,10 @@ export async function processCallback(providerCode, req) {
     const status = await applyCallback(adapter, parsed, record);
     await PaymentCallback.updateOne({ _id: record._id }, { $set: { processingStatus: status.processingStatus, processingNote: status.note, transactionId: status.transactionId } });
     callbackCounter.inc({ provider: providerCode, outcome: status.processingStatus.toLowerCase() });
+    if (status.processingStatus === 'ORPHANED') {
+      // The callback can beat our own write of providerRequestId (race with initiate).
+      await enqueue(QUEUES.payments, 'retry-orphaned-callback', { callbackId: String(record._id) }, { delay: 15_000, jobId: `orphan-${record._id}-1` });
+    }
     return { ack: parsed.ack, status: status.processingStatus };
   } catch (err) {
     await PaymentCallback.updateOne({ _id: record._id }, { $set: { processingStatus: 'ERROR', processingNote: err.message.slice(0, 200) } });
@@ -445,6 +451,29 @@ export async function requestReversal(transactionId, { reason, adminId }) {
 
 // ------------------------------------------------------------------ queue handlers
 registerInlineHandler(QUEUES.payments, 'confirm-status', (job) => checkTransactionStatus(job.data.transactionId));
+
+/**
+ * Re-applies a verified callback that arrived before its transaction was
+ * linked to the provider request. Retries with backoff (15s, 30s, 60s, 2m,
+ * 4m); after that it stays ORPHANED for reconciliation to resolve.
+ */
+export async function retryOrphanedCallback({ callbackId }) {
+  const cb = await PaymentCallback.findOne({ _id: callbackId, processingStatus: 'ORPHANED', signatureValid: true });
+  if (!cb) return { status: 'SKIPPED' };
+  const adapter = getAdapter(cb.provider);
+  const parsed = {
+    providerRequestId: cb.providerRequestId, externalRef: cb.externalRef, outcome: cb.outcome,
+    amountMinor: cb.parsed?.amountMinor ?? undefined, reason: cb.parsed?.reason ?? undefined, reversalRequestId: cb.parsed?.reversalRequestId ?? undefined,
+  };
+  const status = await applyCallback(adapter, parsed, cb);
+  const retries = cb.retries + 1;
+  await PaymentCallback.updateOne({ _id: cb._id }, { $set: { processingStatus: status.processingStatus, processingNote: status.note, transactionId: status.transactionId, retries } });
+  if (status.processingStatus === 'ORPHANED' && retries < 5) {
+    await enqueue(QUEUES.payments, 'retry-orphaned-callback', { callbackId }, { delay: 15_000 * 2 ** retries, jobId: `orphan-${callbackId}-${retries + 1}` });
+  }
+  return { status: status.processingStatus };
+}
+registerInlineHandler(QUEUES.payments, 'retry-orphaned-callback', (job) => config.isTest ? null : retryOrphanedCallback(job.data));
 
 export async function deliverMockCallback({ providerRequestId }) {
   const { signMockPayload } = await import('./providers/mock.js');

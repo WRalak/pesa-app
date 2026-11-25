@@ -136,6 +136,9 @@ const paymentCallbackSchema = new Schema({
   providerRequestId: String,
   externalRef: String,
   outcome: String,
+  // Parsed result kept so an orphaned callback can be re-applied later.
+  parsed: { amountMinor: Number, reason: String, reversalRequestId: String },
+  retries: { type: Number, default: 0 },
   payload: Schema.Types.Mixed, // sanitised; never contains customer secrets
   processingStatus: { type: String, enum: ['RECEIVED', 'APPLIED', 'DUPLICATE', 'ORPHANED', 'REJECTED', 'IGNORED', 'ERROR'], default: 'RECEIVED' },
   processingNote: String,

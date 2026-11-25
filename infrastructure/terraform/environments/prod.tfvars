@@ -10,3 +10,5 @@ api_desired_count      = 3
 api_max_count          = 30
 worker_desired_count   = 3
 redis_node_type        = "cache.r7g.large"
+email_from             = "no-reply@pesa.africa"
+daraja_callback_ips    = ["REPLACE_WITH_SAFARICOM_PUBLISHED_IPS"]

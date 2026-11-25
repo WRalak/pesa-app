@@ -41,6 +41,7 @@ resource "aws_iam_role_policy" "task" {
     Statement = [
       { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject"], Resource = ["${aws_s3_bucket.uploads.arn}/avatars/*", "${aws_s3_bucket.uploads.arn}/kyc/*"] },
       { Effect = "Allow", Action = ["kms:GenerateDataKey", "kms:Decrypt"], Resource = [aws_kms_key.main.arn] },
+      { Effect = "Allow", Action = ["ses:SendEmail"], Resource = ["*"], Condition = { StringEquals = { "ses:FromAddress" = var.email_from } } },
     ]
   })
 }
@@ -88,9 +89,16 @@ locals {
     { name = "TRUST_PROXY", value = "1" },
     { name = "PAYMENT_PROVIDERS", value = local.prod ? "daraja" : "mock,daraja" },
     { name = "OTEL_ENABLED", value = "true" },
+    { name = "SMS_PROVIDER", value = "africastalking" },
+    { name = "EMAIL_PROVIDER", value = "ses" },
+    { name = "EMAIL_FROM", value = var.email_from },
+    { name = "SES_REGION", value = var.ses_region },
+    { name = "FCM_ENABLED", value = "true" },
+    { name = "DARAJA_ENV", value = local.prod ? "production" : "sandbox" },
+    { name = "DARAJA_ALLOWED_IPS", value = join(",", var.daraja_callback_ips) },
     { name = "APP_VERSION", value = var.image_tag },
   ]
-  app_secret_keys = ["JWT_ACCESS_SECRET", "JWT_ADMIN_SECRET", "HASH_PEPPER", "FIELD_ENCRYPTION_KEY", "DARAJA_CONSUMER_KEY", "DARAJA_CONSUMER_SECRET", "DARAJA_SHORTCODE", "DARAJA_PASSKEY", "DARAJA_CALLBACK_TOKEN", "SENTRY_DSN", "METRICS_TOKEN", "MOCK_PROVIDER_WEBHOOK_SECRET"]
+  app_secret_keys = ["JWT_ACCESS_SECRET", "JWT_ADMIN_SECRET", "HASH_PEPPER", "FIELD_ENCRYPTION_KEY", "DARAJA_CONSUMER_KEY", "DARAJA_CONSUMER_SECRET", "DARAJA_SHORTCODE", "DARAJA_PASSKEY", "DARAJA_CALLBACK_TOKEN", "SENTRY_DSN", "METRICS_TOKEN", "MOCK_PROVIDER_WEBHOOK_SECRET", "AFRICASTALKING_USERNAME", "AFRICASTALKING_API_KEY", "FCM_SERVICE_ACCOUNT_JSON"]
   app_secrets = concat(
     [for k in local.app_secret_keys : { name = k, valueFrom = "${aws_secretsmanager_secret.app.arn}:${k}::" }],
     [{ name = "REDIS_URL", valueFrom = aws_secretsmanager_secret.redis.arn }, { name = "MONGODB_URI", valueFrom = var.mongodb_uri_secret_arn }],
