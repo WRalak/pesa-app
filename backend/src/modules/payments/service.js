@@ -99,7 +99,7 @@ export async function transition(txnId, { to, source, reason, actorId, externalR
     const updated = await Transaction.findOneAndUpdate(
       { _id: txnId, status: current.status, version: current.version },
       { $set, $inc: { version: 1 } },
-      { new: true, session },
+      { returnDocument: 'after', session },
     );
     if (!updated) throw Object.assign(new Error('Concurrent transaction update'), { errorLabels: ['TransientTransactionError'] });
     await TransactionEvent.create([{

@@ -77,7 +77,7 @@ export async function receipt(userId, id) {
 
 export async function setCategory(userId, id, category) {
   if (![...EXPENSE_KEYS, ...INCOME_KEYS].includes(category)) throw Errors.validation([{ path: 'category', message: 'Unknown category' }]);
-  const t = await Transaction.findOneAndUpdate({ _id: id, userId }, { $set: { category, categorySource: 'USER' } }, { new: true }).lean();
+  const t = await Transaction.findOneAndUpdate({ _id: id, userId }, { $set: { category, categorySource: 'USER' } }, { returnDocument: 'after' }).lean();
   if (!t) throw Errors.notFound('Transaction');
   await TransactionEvent.create({ transactionId: t._id, userId, fromStatus: t.status, toStatus: t.status, kind: 'CATEGORY_CHANGED', source: 'USER', actorId: String(userId), data: { category } });
   return { transaction: serializeTransaction(t) };

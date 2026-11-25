@@ -22,7 +22,7 @@ const schema = z.object({
   MONGODB_MAX_POOL: z.coerce.number().int().default(50),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  CORS_ORIGINS: z.string().default('http://localhost:5173'),
+  CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:8080'),
 
   JWT_ACCESS_SECRET: z.string().min(32).default('dev-access-secret-change-me-0123456789abcdef'),
   JWT_ADMIN_SECRET: z.string().min(32).default('dev-admin-secret-change-me-0123456789abcdef'),
@@ -92,7 +92,7 @@ const schema = z.object({
 
 const parsed = schema.safeParse(process.env);
 if (!parsed.success) {
-  // eslint-disable-next-line no-console
+   
   console.error('Invalid environment configuration', parsed.error.flatten().fieldErrors);
   process.exit(1);
 }
@@ -110,7 +110,7 @@ if (isDeployed) {
     problems.push('mock payment provider cannot be enabled in production');
   }
   if (problems.length) {
-    // eslint-disable-next-line no-console
+     
     console.error('Refusing to start:', problems);
     process.exit(1);
   }

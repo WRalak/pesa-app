@@ -5,7 +5,8 @@ import { categorize } from '../budgets/categorizer.js';
 import { getCurrency } from '../../config/currencies.js';
 import { getRedis } from '../../lib/redis.js';
 import { logger } from '../../lib/logger.js';
-import { sha256, canonical } from '../../lib/crypto.js';
+import { sha256 } from '../../lib/crypto.js';
+import { canonical } from '../../lib/audit-chain.js';
 
 export async function getMonthlyReport(user, { date, narrative }) {
   const report = await monthlyReport(user, date);

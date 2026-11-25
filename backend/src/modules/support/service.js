@@ -47,7 +47,7 @@ export async function replyToTicket(userId, id, { message }) {
   const t = await SupportTicket.findOneAndUpdate(
     { _id: id, userId, status: { $nin: ['CLOSED'] } },
     { $push: { messages: { authorType: 'USER', authorId: userId, body: message } }, $set: { status: 'OPEN' } },
-    { new: true },
+    { returnDocument: 'after' },
   ).lean();
   if (!t) throw Errors.notFound('Ticket');
   return serializeTicket(t);

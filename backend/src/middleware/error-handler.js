@@ -7,7 +7,7 @@ export function notFoundHandler(req, res) {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found', requestId: req.id } });
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 export function errorHandler(err, req, res, _next) {
   let e = err;
   if (err?.type === 'entity.parse.failed') e = new AppError('BAD_REQUEST', 'Malformed JSON body', 400);

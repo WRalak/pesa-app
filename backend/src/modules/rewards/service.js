@@ -29,7 +29,7 @@ export async function creditReward({ userId, campaign, kind, points = 0, amountM
       if (campaign?.totalBudgetMinor != null && amountMinor > 0) {
         const ok = await RewardCampaign.findOneAndUpdate(
           { _id: campaign._id, $expr: { $lte: [{ $add: ['$budgetUsedMinor', amountMinor] }, '$totalBudgetMinor'] } },
-          { $inc: { budgetUsedMinor: amountMinor } }, { session, new: true },
+          { $inc: { budgetUsedMinor: amountMinor } }, { session, returnDocument: 'after' },
         );
         if (!ok) throw Object.assign(new Error('Campaign budget exhausted'), { code: 'BUDGET_EXHAUSTED' });
       }
@@ -173,7 +173,7 @@ export async function qualifyReferral(t) {
   const campaign = ref.campaignId ? await RewardCampaign.findById(ref.campaignId).lean() : null;
   if (!campaign || campaign.status !== 'ACTIVE') return null;
   if (t.amountMinor < (campaign.rules.referralQualifyingMinAmountMinor ?? 0)) return null;
-  const claimed = await Referral.findOneAndUpdate({ _id: ref._id, status: 'PENDING' }, { $set: { status: 'QUALIFIED', qualifiedAt: new Date() } }, { new: true });
+  const claimed = await Referral.findOneAndUpdate({ _id: ref._id, status: 'PENDING' }, { $set: { status: 'QUALIFIED', qualifiedAt: new Date() } }, { returnDocument: 'after' });
   if (!claimed) return null;
   const rules = campaign.rules;
   if (rules.referrerPoints) await creditReward({ userId: ref.referrerId, campaign, kind: 'POINTS', points: rules.referrerPoints, currency: t.currency, sourceType: 'REFERRAL', sourceId: String(ref._id), description: 'Referral bonus', dedupeKey: `referral:referrer:${ref._id}` });
@@ -226,7 +226,7 @@ export async function redeemPoints(user, { points, reward }) {
   const cost = POINTS_CATALOG[reward];
   if (!cost || points !== cost) throw Errors.validation([{ path: 'reward', message: 'Unknown reward or wrong points amount' }]);
   const entry = await withTransaction(async (session) => {
-    const ok = await RewardAccount.findOneAndUpdate({ userId: user._id, points: { $gte: cost } }, { $inc: { points: -cost } }, { new: true, session });
+    const ok = await RewardAccount.findOneAndUpdate({ userId: user._id, points: { $gte: cost } }, { $inc: { points: -cost } }, { returnDocument: 'after', session });
     if (!ok) throw Errors.unprocessable('INSUFFICIENT_POINTS', 'You do not have enough points');
     const [e] = await Reward.create([{ userId: user._id, kind: 'POINTS', entryType: 'REDEEM', points: -cost, currency: user.currency, sourceType: 'REDEMPTION', description: `Redeemed for ${reward.replace('_', ' ')}`, dedupeKey: `redeem:${user._id}:${Date.now()}:${Math.random()}` }], { session });
     return e;

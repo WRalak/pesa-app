@@ -154,7 +154,7 @@ export async function updateEntry(user, kind, id, input) {
   if (input.category) { assertCategory(input.category, kind); set.category = input.category; }
   if (input.description !== undefined) set.description = input.description;
   if (input.date) set.date = input.date;
-  const e = await Model.findOneAndUpdate({ _id: id, userId: user._id }, { $set: set }, { new: true }).lean();
+  const e = await Model.findOneAndUpdate({ _id: id, userId: user._id }, { $set: set }, { returnDocument: 'after' }).lean();
   if (!e) throw Errors.notFound(kind === 'INCOME' ? 'Income record' : 'Expense');
   return serializeEntry(e);
 }
@@ -196,11 +196,11 @@ export async function stopRecurring(user, id) {
 export async function runRecurring(now = new Date()) {
   let created = 0;
   for (let i = 0; i < 1000; i++) {
-    // Claim + advance in one atomic update; `new: false` returns the run being executed.
+    // Claim + advance in one atomic update; `returnDocument: 'before'` returns the run being executed.
     const item = await RecurringItem.findOneAndUpdate(
       { active: true, nextRunAt: { $lte: now } },
       [{ $set: { nextRunAt: { $dateAdd: { startDate: '$nextRunAt', unit: { $cond: [{ $eq: ['$frequency', 'WEEKLY'] }, 'week', 'month'] }, amount: 1 } } } }],
-      { new: false, sort: { nextRunAt: 1 }, updatePipeline: true },
+      { returnDocument: 'before', sort: { nextRunAt: 1 }, updatePipeline: true },
     );
     if (!item) break;
     const Model = item.kind === 'INCOME' ? IncomeRecord : Expense;

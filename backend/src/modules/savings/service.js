@@ -125,7 +125,7 @@ export async function addContribution(user, id, { kind, amount, note }) {
     if (g.status === 'ARCHIVED') throw Errors.unprocessable('GOAL_ARCHIVED', 'Restore the goal before adding entries');
     const delta = kind === 'WITHDRAWAL' ? -amountMinor : amountMinor;
     const guard = kind === 'WITHDRAWAL' ? { savedMinor: { $gte: amountMinor } } : {};
-    const updated = await SavingsGoal.findOneAndUpdate({ _id: g._id, ...guard }, { $inc: { savedMinor: delta } }, { new: true, session });
+    const updated = await SavingsGoal.findOneAndUpdate({ _id: g._id, ...guard }, { $inc: { savedMinor: delta } }, { returnDocument: 'after', session });
     if (!updated) throw Errors.unprocessable('INSUFFICIENT_SAVED', 'You cannot withdraw more than you have saved toward this goal');
     let completedNow = false;
     if (updated.status === 'ACTIVE' && updated.savedMinor >= updated.targetMinor) {

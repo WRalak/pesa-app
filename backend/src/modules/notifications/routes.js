@@ -27,7 +27,7 @@ r.route({
 r.route({
   method: 'post', path: '/:id/read', summary: 'Mark one notification read', params: idParams, middleware: [requireAuth],
   handler: async (req) => {
-    const n = await Notification.findOneAndUpdate({ _id: req.valid.params.id, userId: req.user.id }, { $set: { readAt: new Date() } }, { new: true }).lean();
+    const n = await Notification.findOneAndUpdate({ _id: req.valid.params.id, userId: req.user.id }, { $set: { readAt: new Date() } }, { returnDocument: 'after' }).lean();
     if (!n) throw Errors.notFound('Notification');
     return serialize(n);
   },

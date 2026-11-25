@@ -1,0 +1,11 @@
+import { writeFileSync, mkdirSync } from 'node:fs';
+process.env.NODE_ENV ??= 'development';
+const { createApp } = await import('../src/app.js');
+const { buildOpenApiDocument } = await import('../src/lib/openapi.js');
+const { closeRedis } = await import('../src/lib/redis.js');
+createApp();
+mkdirSync('../docs/api', { recursive: true });
+writeFileSync('../docs/api/openapi.json', JSON.stringify(buildOpenApiDocument(), null, 2));
+console.log('Wrote docs/api/openapi.json');
+await closeRedis();
+process.exit(0);

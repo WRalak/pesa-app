@@ -15,6 +15,8 @@ import insightsRoutes from './modules/insights/routes.js';
 import dashboardRoutes from './modules/dashboard/routes.js';
 import cardRoutes, { issuerWebhook } from './modules/cards/routes.js';
 import rewardRoutes from './modules/rewards/routes.js';
+import adminAuthRoutes from './modules/admin/auth.js';
+import adminRoutes from './modules/admin/routes.js';
 
 /** Central route table. All public APIs are versioned under /v1. */
 export function mountRoutes(app) {
@@ -36,4 +38,7 @@ export function mountRoutes(app) {
   app.use('/v1/dashboard', dashboardRoutes);
   app.use('/v1/cards', cardRoutes);
   app.use('/v1/rewards', rewardRoutes);
+  // Admin API: separate audience, separate JWT secret, MFA-only tokens.
+  app.use('/admin/v1/auth', adminAuthRoutes);
+  app.use('/admin/v1', adminRoutes);
 }

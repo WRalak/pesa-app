@@ -7,3 +7,4 @@ import './payments/service.js';
 import './payments/subscribers.js';
 import './budgets/subscribers.js';
 import './rewards/subscribers.js';
+import './admin/campaign-jobs.js';

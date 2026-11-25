@@ -84,7 +84,7 @@ async function upsertDevice(userId, info, req, { trusted }) {
     update.$set.trustedAt = new Date();
     update.$unset = { revokedAt: 1 };
   }
-  return Device.findOneAndUpdate({ userId, deviceId: info.deviceId }, update, { upsert: true, new: true });
+  return Device.findOneAndUpdate({ userId, deviceId: info.deviceId }, update, { upsert: true, returnDocument: 'after' });
 }
 
 async function completeLogin(user, deviceInfo, req, { newDevice }) {
@@ -166,7 +166,7 @@ export async function register(input, req) {
   }
   await UserProfile.updateOne(
     { userId: user._id },
-    { $set: { firstName: input.firstName, lastName: input.lastName }, $setOnInsert: { userId: user._id } },
+    { $set: { firstName: input.firstName, lastName: input.lastName, 'notificationPreferences.promotions': Boolean(input.marketingConsent) }, $setOnInsert: { userId: user._id } },
     { upsert: true },
   );
   const otp = await issueOtp({ target: e164, purpose: 'PHONE_VERIFY', userId: user._id });
@@ -214,7 +214,7 @@ export async function login({ phone, password, device }, req) {
   }
   const ok = await verifySecret(user.passwordHash, password);
   if (!ok) {
-    const updated = await User.findOneAndUpdate({ _id: user._id }, { $inc: { failedLoginAttempts: 1 } }, { new: true });
+    const updated = await User.findOneAndUpdate({ _id: user._id }, { $inc: { failedLoginAttempts: 1 } }, { returnDocument: 'after' });
     await securityEvent({ userId: user._id, type: 'LOGIN_FAILED', severity: 'LOW', details: { attempts: updated.failedLoginAttempts } }, req);
     if (updated.failedLoginAttempts >= config.LOGIN_MAX_FAILURES) {
       const lockedUntil = new Date(Date.now() + config.LOGIN_LOCK_MINUTES * 60_000);
@@ -290,7 +290,7 @@ export async function refresh({ refreshToken, deviceId }, req) {
       $push: { previousTokenHashes: { $each: [tokenHash], $slice: -20 } },
       $inc: { rotationCount: 1 },
     },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!rotated) throw Errors.unauthorized('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
   await Device.updateOne({ _id: device._id }, { $set: { lastSeenAt: new Date(), lastIp: req.ip } });
@@ -373,7 +373,7 @@ export async function verifyPin(userId, pin, req) {
     if (user.pinFailedAttempts) await User.updateOne({ _id: userId }, { $set: { pinFailedAttempts: 0 } });
     return true;
   }
-  const updated = await User.findOneAndUpdate({ _id: userId }, { $inc: { pinFailedAttempts: 1 } }, { new: true });
+  const updated = await User.findOneAndUpdate({ _id: userId }, { $inc: { pinFailedAttempts: 1 } }, { returnDocument: 'after' });
   if (updated.pinFailedAttempts >= config.PIN_MAX_FAILURES) {
     const lockedUntil = new Date(Date.now() + config.PIN_LOCK_MINUTES * 60_000);
     await User.updateOne({ _id: userId }, { $set: { pinLockedUntil: lockedUntil, pinFailedAttempts: 0 } });

@@ -39,13 +39,13 @@ export async function updateProfile(userId, patch) {
   if (user.kycStatus === 'VERIFIED' && (patch.firstName || patch.lastName || patch.dateOfBirth)) {
     throw Errors.unprocessable('KYC_LOCKED', 'Name and date of birth cannot be changed after identity verification. Contact support.');
   }
-  const profile = await UserProfile.findOneAndUpdate({ userId }, { $set: set }, { new: true, upsert: true }).lean();
+  const profile = await UserProfile.findOneAndUpdate({ userId }, { $set: set }, { returnDocument: 'after', upsert: true }).lean();
   return serializeProfile(profile);
 }
 
 export async function updatePreferences(userId, prefs) {
   const set = Object.fromEntries(Object.entries(prefs).map(([k, v]) => [`notificationPreferences.${k}`, v]));
-  const profile = await UserProfile.findOneAndUpdate({ userId }, { $set: set }, { new: true, upsert: true }).lean();
+  const profile = await UserProfile.findOneAndUpdate({ userId }, { $set: set }, { returnDocument: 'after', upsert: true }).lean();
   return profile.notificationPreferences;
 }
 
@@ -53,6 +53,7 @@ export async function updatePrivacy(userId, { hideBalances, analyticsOptIn, mark
   const pset = {};
   if (hideBalances !== undefined) pset['privacy.hideBalances'] = hideBalances;
   if (analyticsOptIn !== undefined) pset['privacy.analyticsOptIn'] = analyticsOptIn;
+  if (marketing !== undefined) pset['notificationPreferences.promotions'] = marketing;
   if (Object.keys(pset).length) await UserProfile.updateOne({ userId }, { $set: pset }, { upsert: true });
   const uset = {};
   if (marketing !== undefined) uset['consents.marketing'] = marketing;
@@ -99,7 +100,7 @@ export async function updateCurrentDevice(userId, deviceId, { pushToken, biometr
   const set = {};
   if (pushToken !== undefined) set.pushToken = pushToken;
   if (biometricEnabled !== undefined) set.biometricEnabled = biometricEnabled;
-  const d = await Device.findOneAndUpdate({ userId, deviceId, revokedAt: null }, { $set: set }, { new: true });
+  const d = await Device.findOneAndUpdate({ userId, deviceId, revokedAt: null }, { $set: set }, { returnDocument: 'after' });
   if (!d) throw Errors.notFound('Device');
   return { id: String(d._id), biometricEnabled: d.biometricEnabled, pushRegistered: Boolean(pushToken ?? d.pushToken) };
 }

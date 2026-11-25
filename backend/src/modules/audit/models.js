@@ -23,7 +23,7 @@ const auditLogSchema = new Schema({
   prevHash: { type: String },
   hash: { type: String, required: true },
   createdAt: { type: Date, required: true },
-}, { versionKey: false });
+}, { versionKey: false, minimize: false });
 auditLogSchema.index({ actorType: 1, actorId: 1, createdAt: -1 });
 auditLogSchema.index({ resourceType: 1, resourceId: 1, createdAt: -1 });
 auditLogSchema.index({ action: 1, createdAt: -1 });
