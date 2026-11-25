@@ -231,3 +231,17 @@ describe('campaigns, security and audit', () => {
     expect(bad.body.brokenAt).toBe(2);
   });
 });
+
+describe('temporary passwords', () => {
+  it('blocks privileged actions until an invited admin changes their password', async () => {
+    const inv = await api().post('/admin/v1/admins').set(as(superT)).send({ email: 'new.ops@pesa.test', name: 'New Ops', roles: ['OPERATIONS_ADMIN'] }).expect(201);
+    const s1 = await api().post('/admin/v1/auth/login').send({ email: 'new.ops@pesa.test', password: inv.body.temporaryPassword }).expect(200);
+    const setup = await api().post('/admin/v1/auth/mfa/setup').send({ mfaToken: s1.body.mfaToken }).expect(200);
+    const tok = (await api().post('/admin/v1/auth/mfa/enroll').send({ mfaToken: s1.body.mfaToken, code: totpCode(setup.body.secret) }).expect(200)).body.accessToken;
+    const blocked = await api().get('/admin/v1/dashboard').set(as(tok)).expect(403);
+    expect(blocked.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
+    expect((await api().get('/admin/v1/auth/me').set(as(tok)).expect(200)).body.mustChangePassword).toBe(true);
+    await api().post('/admin/v1/auth/password').set(as(tok)).send({ currentPassword: inv.body.temporaryPassword, newPassword: 'My-0wn-Strong-Passphrase' }).expect(200);
+    await api().get('/admin/v1/dashboard').set(as(tok)).expect(200);
+  });
+});

@@ -116,7 +116,7 @@ r.route({
 
 r.route({
   method: 'get', path: '/me', summary: 'Current admin and permissions', auth: 'adminAuth', middleware: [requireAdmin],
-  handler: (req) => ({ id: req.admin.id, email: req.admin.email, name: req.admin.name, roles: req.admin.roles, permissions: req.admin.permissions }),
+  handler: (req) => ({ id: req.admin.id, email: req.admin.email, name: req.admin.name, roles: req.admin.roles, permissions: req.admin.permissions, mustChangePassword: req.admin.mustChangePassword }),
 });
 
 r.route({

@@ -301,7 +301,7 @@ r.route({
   query: pageQuery.extend({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'FAILED']).default('PENDING') }),
   handler: async (req) => {
     const page = await paginate(AdminApproval, { status: req.valid.query.status }, req.valid.query);
-    return { ...page, items: page.items.map((a) => ({ id: String(a._id), type: a.type, resourceId: a.resourceId, payload: a.payload, reason: a.reason, status: a.status, requestedBy: String(a.requestedBy), decidedBy: a.decidedBy ? String(a.decidedBy) : null, createdAt: a.createdAt, mine: String(a.requestedBy) === req.admin.id })) };
+    return { ...page, items: page.items.map((a) => ({ id: String(a._id), type: a.type, resourceId: a.resourceId, payload: a.payload, amount: a.payload?.amountMinor != null ? money(a.payload.amountMinor, a.payload.currency) : null, reason: a.reason, status: a.status, requestedBy: String(a.requestedBy), decidedBy: a.decidedBy ? String(a.decidedBy) : null, createdAt: a.createdAt, mine: String(a.requestedBy) === req.admin.id })) };
   },
 });
 

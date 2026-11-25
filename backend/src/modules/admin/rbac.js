@@ -80,7 +80,12 @@ export async function requireAdmin(req, _res, next) {
     AdminSession.findById(payload.sid).lean(),
   ]);
   if (!admin || admin.status !== 'ACTIVE' || !session || session.revokedAt || session.expiresAt < new Date()) return next(Errors.unauthorized('Session revoked', 'SESSION_REVOKED'));
-  req.admin = { id: String(admin._id), email: admin.email, name: admin.name, roles: admin.roles, sessionId: payload.sid, permissions: await permissionsFor(admin.roles) };
+  req.admin = { id: String(admin._id), email: admin.email, name: admin.name, roles: admin.roles, sessionId: payload.sid, permissions: await permissionsFor(admin.roles), mustChangePassword: Boolean(admin.mustChangePassword) };
+  // Temporary passwords must be replaced before any privileged action.
+  const allowed = ['/admin/v1/auth/me', '/admin/v1/auth/password', '/admin/v1/auth/logout'];
+  if (req.admin.mustChangePassword && !allowed.includes(req.originalUrl.split('?')[0])) {
+    return next(Object.assign(Errors.forbidden('Change your temporary password to continue'), { code: 'PASSWORD_CHANGE_REQUIRED' }));
+  }
   next();
 }
 
