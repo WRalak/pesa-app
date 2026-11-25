@@ -1,0 +1,23 @@
+# Prometheus alerting rules for metrics exposed at GET /metrics (token-protected).
+groups:
+  - name: pesa-payments
+    rules:
+      - alert: PaymentFailureRateHigh
+        expr: sum(rate(pesa_payments_total{status="FAILED"}[10m])) / sum(rate(pesa_payments_total{status=~"SUCCESSFUL|FAILED"}[10m])) > 0.2
+        for: 10m
+        labels: { severity: page }
+        annotations: { summary: "More than 20% of payments failing", runbook: "docs/RUNBOOK.md#payment-failures" }
+      - alert: CallbacksRejected
+        expr: sum(increase(pesa_provider_callbacks_total{outcome="rejected"}[15m])) > 5
+        labels: { severity: page }
+        annotations: { summary: "Provider callbacks failing verification (possible spoofing)", runbook: "docs/RUNBOOK.md#rejected-callbacks" }
+      - alert: ApiLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(pesa_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: "p95 API latency above 1s" }
+      - alert: Api5xx
+        expr: sum(rate(pesa_http_request_duration_seconds_count{status=~"5.."}[5m])) > 1
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: "Sustained 5xx responses" }

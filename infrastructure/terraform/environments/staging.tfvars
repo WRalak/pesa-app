@@ -1,0 +1,12 @@
+environment            = "staging"
+api_domain             = "api.staging.pesa.africa"
+admin_domain           = "admin.staging.pesa.internal"
+acm_certificate_arn    = "arn:aws:acm:af-south-1:ACCOUNT_ID:certificate/REPLACE_ME"
+image_tag              = "REPLACED_BY_PIPELINE"
+admin_allowed_cidrs    = ["10.0.0.0/8"] # corporate VPN / ZTNA ranges
+mongodb_uri_secret_arn = "arn:aws:secretsmanager:af-south-1:ACCOUNT_ID:secret:pesa-staging/mongodb-uri"
+alarm_sns_topic_arn    = "arn:aws:sns:af-south-1:ACCOUNT_ID:pesa-staging-alerts"
+api_desired_count      = 1
+api_max_count          = 4
+worker_desired_count   = 1
+redis_node_type        = "cache.t4g.small"

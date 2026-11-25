@@ -1,0 +1,12 @@
+environment            = "prod"
+api_domain             = "api.pesa.africa"
+admin_domain           = "admin.pesa.internal"
+acm_certificate_arn    = "arn:aws:acm:af-south-1:ACCOUNT_ID:certificate/REPLACE_ME"
+image_tag              = "REPLACED_BY_PIPELINE"
+admin_allowed_cidrs    = ["10.0.0.0/8"] # corporate VPN / ZTNA ranges
+mongodb_uri_secret_arn = "arn:aws:secretsmanager:af-south-1:ACCOUNT_ID:secret:pesa-prod/mongodb-uri"
+alarm_sns_topic_arn    = "arn:aws:sns:af-south-1:ACCOUNT_ID:pesa-prod-alerts"
+api_desired_count      = 3
+api_max_count          = 30
+worker_desired_count   = 3
+redis_node_type        = "cache.r7g.large"

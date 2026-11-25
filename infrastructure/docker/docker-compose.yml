@@ -1,0 +1,115 @@
+# Local development stack: MongoDB replica set, Redis, MinIO (S3), API,
+# worker, admin console and an OpenTelemetry collector (profile "observability").
+#
+#   cp ../../backend/.env.example ../../backend/.env   # then fill secrets
+#   docker compose up --build
+#
+# API: http://localhost:4000  (Swagger: /docs)  Admin: http://localhost:8081
+name: pesa
+
+x-api-env: &api-env
+  NODE_ENV: development
+  MONGODB_URI: mongodb://mongo:27017/pesa?replicaSet=rs0
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: pesa-uploads
+  AWS_ACCESS_KEY_ID: pesa-minio
+  AWS_SECRET_ACCESS_KEY: pesa-minio-dev-secret
+  PUBLIC_BASE_URL: http://localhost:4000
+  CORS_ORIGINS: http://localhost:8081,http://localhost:5173
+  DEV_OTP_OUTBOX: "true"
+  PAYMENT_PROVIDERS: mock
+  LOG_LEVEL: info
+
+services:
+  mongo:
+    image: mongo:7.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      # Initialise the single-node replica set on first boot (transactions need it).
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: pesa-minio
+      MINIO_ROOT_PASSWORD: pesa-minio-dev-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio-data:/data]
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on: [minio]
+    entrypoint: ["/bin/sh", "-c", "sleep 3; mc alias set local http://minio:9000 pesa-minio pesa-minio-dev-secret && mc mb -p local/pesa-uploads && mc anonymous set none local/pesa-uploads"]
+
+  api:
+    build: { context: ../../backend, args: { APP_VERSION: local } }
+    env_file: [../../backend/.env]
+    environment: *api-env
+    ports: ["4000:4000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  worker:
+    build: { context: ../../backend }
+    command: ["node", "src/worker.js"]
+    env_file: [../../backend/.env]
+    environment: *api-env
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  seed:
+    build: { context: ../../backend }
+    command: ["node", "scripts/seed.js"]
+    env_file: [../../backend/.env]
+    environment: *api-env
+    depends_on:
+      mongo: { condition: service_healthy }
+    profiles: ["seed"]
+
+  admin:
+    build: { context: ../../admin }
+    ports: ["8081:8080"]
+    depends_on: [api]
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx]
+    security_opt: ["no-new-privileges:true"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes: [../monitoring/otel-collector.yaml:/etc/otel/config.yaml:ro]
+    ports: ["4318:4318"]
+    profiles: ["observability"]
+
+volumes:
+  mongo-data:
+  redis-data:
+  minio-data:

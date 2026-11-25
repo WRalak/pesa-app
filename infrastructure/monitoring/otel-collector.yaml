@@ -1,0 +1,18 @@
+# Receives OTLP traces from the API/worker. In AWS, export to X-Ray / your APM.
+receivers:
+  otlp:
+    protocols:
+      http: { endpoint: 0.0.0.0:4318 }
+processors:
+  batch: {}
+  attributes/scrub:
+    actions:
+      # Defence in depth: never ship credentials or PII in span attributes.
+      - { key: http.request.header.authorization, action: delete }
+      - { key: http.request.header.idempotency-key, action: delete }
+      - { key: enduser.id, action: hash }
+exporters:
+  debug: { verbosity: basic }
+service:
+  pipelines:
+    traces: { receivers: [otlp], processors: [attributes/scrub, batch], exporters: [debug] }

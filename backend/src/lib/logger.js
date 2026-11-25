@@ -15,11 +15,22 @@ export const REDACT_PATHS = [
   'cardNumber', '*.cardNumber', 'cvv', '*.cvv', 'Password', '*.Password',
 ];
 
+/** Pretty logs only for interactive local runs where pino-pretty (a devDependency) is installed. */
+function devTransport() {
+  if (!config.isDev || !process.stdout.isTTY) return undefined;
+  try {
+    import.meta.resolve('pino-pretty');
+    return { target: 'pino-pretty', options: { colorize: true } };
+  } catch {
+    return undefined;
+  }
+}
+
 export const logger = pino({
   level: config.isTest ? 'silent' : config.LOG_LEVEL,
   base: { service: 'pesa-api', env: config.NODE_ENV },
   redact: { paths: REDACT_PATHS, censor: '[REDACTED]' },
   timestamp: pino.stdTimeFunctions.isoTime,
   formatters: { level: (label) => ({ level: label }) },
-  transport: config.isDev ? { target: 'pino-pretty', options: { colorize: true } } : undefined,
+  transport: devTransport(),
 });

@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - { package-ecosystem: npm, directory: /backend, schedule: { interval: weekly }, open-pull-requests-limit: 10, groups: { minor-and-patch: { update-types: [minor, patch] } } }
+  - { package-ecosystem: npm, directory: /admin, schedule: { interval: weekly }, groups: { minor-and-patch: { update-types: [minor, patch] } } }
+  - { package-ecosystem: pub, directory: /mobile, schedule: { interval: weekly } }
+  - { package-ecosystem: docker, directory: /backend, schedule: { interval: weekly } }
+  - { package-ecosystem: docker, directory: /admin, schedule: { interval: weekly } }
+  - { package-ecosystem: github-actions, directory: /, schedule: { interval: weekly } }
+  - { package-ecosystem: terraform, directory: /infrastructure/terraform, schedule: { interval: monthly } }

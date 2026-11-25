@@ -1,0 +1,81 @@
+name: Deploy
+
+# main -> staging automatically; production requires the "production"
+# environment's required reviewers (GitHub Environments) to approve.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, prod]
+        default: staging
+
+permissions:
+  contents: read
+  id-token: write # OIDC to AWS — no long-lived cloud keys in GitHub
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ vars.AWS_DEPLOY_ROLE_ARN }}", aws-region: af-south-1 }
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build & push API (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/arm64
+          push: true
+          provenance: true
+          sbom: true
+          build-args: APP_VERSION=${{ steps.meta.outputs.tag }}
+          tags: ${{ steps.ecr.outputs.registry }}/pesa/api:${{ steps.meta.outputs.tag }}
+      - name: Build & push admin (arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: admin
+          platforms: linux/arm64
+          push: true
+          provenance: true
+          sbom: true
+          build-args: VITE_API_BASE_URL=
+          tags: ${{ steps.ecr.outputs.registry }}/pesa/admin:${{ steps.meta.outputs.tag }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    defaults: { run: { working-directory: infrastructure/terraform } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ vars.AWS_DEPLOY_ROLE_ARN }}", aws-region: af-south-1 }
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.8 }
+      - run: terraform init -backend-config=environments/${{ inputs.environment || 'staging' }}.backend.hcl
+      - name: Run database index build / seed (idempotent) as a one-off task
+        run: |
+          aws ecs run-task --cluster pesa-${{ inputs.environment || 'staging' }} --launch-type FARGATE \
+            --task-definition pesa-${{ inputs.environment || 'staging' }}-worker \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.PRIVATE_SUBNETS }}],securityGroups=[${{ vars.APP_SG }}]}" \
+            --overrides '{"containerOverrides":[{"name":"worker","command":["node","scripts/migrate.js"]}]}'
+      - run: terraform apply -auto-approve -var-file=environments/${{ inputs.environment || 'staging' }}.tfvars -var image_tag=${{ needs.build.outputs.tag }}
+      - name: Wait for services to stabilise
+        run: aws ecs wait services-stable --cluster pesa-${{ inputs.environment || 'staging' }} --services api worker admin
+      - name: Post-deploy smoke test
+        run: curl -fsS "https://${{ vars.API_DOMAIN }}/health/ready"

@@ -1,0 +1,7 @@
+# Financial-critical paths require review from the payments/security owners.
+/backend/src/modules/payments/   @pesa/payments @pesa/security
+/backend/src/modules/auth/       @pesa/security
+/backend/src/modules/admin/      @pesa/security
+/backend/src/lib/money.js        @pesa/payments
+/infrastructure/                 @pesa/platform @pesa/security
+/.github/workflows/              @pesa/platform @pesa/security
