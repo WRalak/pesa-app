@@ -5,3 +5,4 @@
 import './notifications/service.js';
 import './payments/service.js';
 import './payments/subscribers.js';
+import './budgets/subscribers.js';

@@ -8,6 +8,11 @@ import callbackRoutes from './modules/payments/callback.routes.js';
 import transactionRoutes from './modules/transactions/routes.js';
 import notificationRoutes from './modules/notifications/routes.js';
 import accountRoutes from './modules/accounts/routes.js';
+import savingsRoutes from './modules/savings/routes.js';
+import budgetRoutes from './modules/budgets/routes.js';
+import analyticsRoutes from './modules/analytics/routes.js';
+import insightsRoutes from './modules/insights/routes.js';
+import dashboardRoutes from './modules/dashboard/routes.js';
 
 /** Central route table. All public APIs are versioned under /v1. */
 export function mountRoutes(app) {
@@ -21,4 +26,9 @@ export function mountRoutes(app) {
   app.use('/v1/transactions', transactionRoutes);
   app.use('/v1/notifications', notificationRoutes);
   app.use('/v1/accounts', accountRoutes);
+  app.use('/v1/savings', savingsRoutes);
+  app.use('/v1/budgets', budgetRoutes);
+  app.use('/v1/analytics', analyticsRoutes);
+  app.use('/v1/insights', insightsRoutes);
+  app.use('/v1/dashboard', dashboardRoutes);
 }
